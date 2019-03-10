@@ -2,10 +2,21 @@
 
 namespace Corcel\WooCommerce\Model;
 
+use Corcel\Concerns\MetaFields;
 use Corcel\Model;
 
 class Item extends Model
 {
+    use MetaFields;
+
+    public $timestamps = false;
+
+    protected $fillable = [
+        'order_item_name',
+        'order_item_type',
+        'order_id',
+    ];
+
     /**
      * @var array
      */
@@ -25,12 +36,7 @@ class Item extends Model
      */
     protected $table = 'woocommerce_order_items';
 
-    /**
-     * @var array
-     */
-    protected $with = [
-        'product',
-    ];
+    protected $primaryKey = 'order_item_id';
 
     /**
      * @return mixed
@@ -115,8 +121,8 @@ class Item extends Model
     /**
      * @return mixed
      */
-    public function product()
-    {
-        return $this->belongsTo(Product::class);
-    }
+    // public function product()
+    // {
+    //     return $this->belongsTo(Product::class);
+    // }
 }

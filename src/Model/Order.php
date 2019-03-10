@@ -2,96 +2,165 @@
 
 namespace Corcel\WooCommerce\Model;
 
-use Carbon\Carbon;
+use Corcel\Concerns\Aliases;
+use Corcel\Model\Meta\PostMeta;
 use Corcel\Model\Post;
-use Corcel\WooCommerce\Classes\Payment;
-use Corcel\WooCommerce\Builder\OrderBuilder;
-use Corcel\WooCommerce\Traits\AddressesTrait;
+use Corcel\Model\User as Author;
+use Corcel\WooCommerce\Model\Builder\OrderBuilder;
+use Corcel\WooCommerce\Model\Note;
+use Corcel\WooCommerce\Support\OrderPayment as Payment;
+use Corcel\WooCommerce\Support\OrderStatus as Status;
+use Corcel\WooCommerce\Traits\HasAddresses;
+use Illuminate\Support\Carbon;
 
 class Order extends Post
 {
-    use AddressesTrait;
+    use Aliases;
+    use HasAddresses;
 
     /**
+     * The aliases of model's properties or meta values.
+     *
      * @var array
      */
     protected static $aliases = [
-        'currency'    => ['meta' => '_order_currency'],
-        'customer_id' => ['meta' => '_customer_user'],
+        'id'             => 'ID',
+        'author_id'      => 'post_author',
+        'parent_id'      => 'post_parent',
+        'currency'       => ['meta' => '_order_currency'],
+        'customer_id'    => ['meta' => '_customer_user'],
+        'customer_note'  => 'post_excerpt',
+        'created_at_gmt' => 'post_date_gmt',
+        'updated_at_gmt' => 'post_modified_gmt',
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
      * @var array
      */
     protected $appends = [
+        'id',
+        'parent_id',
+        'customer_id',
+        'customer_note',
         'status',
-        'billing',
-        'shipping',
-        'payment',
-        'customer',
-        'date_completed',
-        'date_paid',
         'currency',
+        'created_at',
+        'updated_at',
+        'completed_at',
+        'paid_at',
+        'billing_address',
+        'shipping_address',
+        'payment',
     ];
 
     /**
-     * @var string
+     * List of hidden attributes.
+     *
+     * This list contains all attributes that have "post" word in its name.
+     * Orders are special type of post, so it should not show anything
+     * related to posts.
+     *
+     * @var  array
+     */
+    protected $hidden = [
+        'ID',
+        'post_author',
+        'post_content',
+        'post_date',
+        'post_date_gmt',
+        'post_modified',
+        'post_modified_gmt',
+        'post_title',
+        'post_excerpt',
+        'post_parent',
+        'post_status',
+        'post_type',
+        'comment_count',
+        'comment_status',
+        'ping_status',
+        'post_password',
+        'post_name',
+        'to_ping',
+        'pinged',
+        'post_content_filtered',
+        'guid',
+        'menu_order',
+        'post_mime_type',
+    ];
+
+    /**
+     * The type of post in posts table.
+     *
+     * @var  string
      */
     protected $postType = 'shop_order';
 
     /**
-     * @var array
+     * Get the completed at attribute.
+     *
+     * @return  \Illuminate\Support\Carbon
      */
-    protected $with = ['items', 'customer'];
-
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function customer()
+    protected function getCompletedAtAttribute()
     {
-        return $this->belongsTo(Customer::class);
+        return Carbon::createFromTimestamp($this->meta->_date_completed);
     }
 
     /**
-     * @return Carbon\Carbon|null
+     * Get the customer instance.
+     *
+     * @return  \Corcel\WooCommerce\Model\Customer|null
      */
-    public function getDateCompletedAttribute()
+    protected function getCustomerAttribute()
     {
-        $value = $this->meta->_date_completed;
-
-        return !empty($value) ? Carbon::parse($value) : null;
+        return Customer::find($this->meta->_customer_user);
     }
 
     /**
-     * @return Carbon\Carbon|null
+     * Get the paid at attribute.
+     *
+     * @return  \Illuminate\Support\Carbon
      */
-    public function getDatePaidAttribute()
+    protected function getPaidAtAttribute()
     {
-        $value = $this->meta->_date_paid;
-
-        return !empty($value) ? Carbon::parse($value) : null;
+        return Carbon::createFromTimestamp($this->meta->_date_paid);
     }
 
     /**
-     * @return Corcel\WooCommerce\Classes\Payment
+     * Get the payment instance.
+     *
+     * @return  \Corcel\WooCommerce\Support\Payment
      */
-    public function getPaymentAttribute()
+    protected function getPaymentAttribute()
     {
         return new Payment($this->meta);
     }
 
     /**
-     * @return string
+     * Get the status attribute.
+     *
+     * @return  string|null
      */
-    public function getStatusAttribute()
+    protected function getStatusAttribute()
     {
-        $status = $this->post_status;
-
-        return 'wc-' === substr($status, 0, 3) ? substr($status, 3) : $status;
+        return Status::make($this->post_status)->format();
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * Get the related author.
+     *
+     * @return  \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function author()
+    {
+        return $this->belongsTo(Author::class, 'post_author');
+    }
+
+    /**
+     * Get the related items.
+     *
+     * @return  \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function items()
     {
@@ -99,21 +168,23 @@ class Order extends Post
     }
 
     /**
-     * @param  $query
-     * @return mixed
+     * Get the related notes.
+     *
+     * @return  \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function notes()
+    {
+        return $this->hasMany(Note::class, 'comment_post_ID')->where('comment_type', 'order_note');
+    }
+
+    /**
+     * Create a new Eloquent query builder for the model.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @return \Corcel\WooCommerce\Model\Builder\OrderBuilder
      */
     public function newEloquentBuilder($query)
     {
         return new OrderBuilder($query);
-    }
-
-    /**
-     * @param $status
-     */
-    public function setStatusAttribute($status)
-    {
-        $new_status = 'wc-' === substr($status, 0, 3) ? $status : 'wc-' . $status;
-
-        $this->attributes['post_status'] = $status;
     }
 }

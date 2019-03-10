@@ -3,6 +3,7 @@
 namespace Corcel\WooCommerce\Model\Builder;
 
 use Corcel\Model\Builder\PostBuilder;
+use Corcel\WooCommerce\Support\OrderStatus as Status;
 
 class OrderBuilder extends PostBuilder
 {
@@ -67,20 +68,10 @@ class OrderBuilder extends PostBuilder
      */
     public function status($status)
     {
-        $status = 'wc-' === substr($status, 0, 3) ? substr($status, 3) : $status;
+        $wooStatus = Status::make($status)->formatPrefixed();
 
-        $builtin = [
-            'cancelled',
-            'completed',
-            'failed',
-            'on-hold',
-            'pending',
-            'processing',
-            'refunded',
-        ];
-
-        if (in_array($status, $builtin)) {
-            $status = 'wc-' . $status;
+        if (!empty($wooStatus)) {
+            return parent::status($wooStatus);
         }
 
         return parent::status($status);
