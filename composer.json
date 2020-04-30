@@ -1,20 +1,17 @@
 {
   "name": "corcel/shigriwoocommerce",
   "description": "WooCommerce plugin for Corcel",
-  "homepage": "http://github.com/corcel/woocommerce",
+  "homepage": "https://github.com/shigristudy/woocommerce",
   "license": "MIT",
   "authors": [
     {
-      "name": "Krzysztof Grabania",
-      "email": "krzysztof@grabania.pl",
-      "homepage": "http://grabania.pl"
+      "name": "Kabeer Hussain",
+      "email": "kabeerhussain@gmail.com",
+      "homepage": "http://skdpk.com"
     }
   ],
   "require": {
     "php": ">=5.5.9"
-  },
-  "require-dev": {
-    "phpunit/phpunit": "~4.8"
   },
   "autoload": {
     "psr-4": {
